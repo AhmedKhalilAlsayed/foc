@@ -1,0 +1,2 @@
+- we will abstract the application logic and the hardware by this folder
+- 

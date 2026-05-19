@@ -1,5 +1,0 @@
-// interface
-class IFOCControl
-{
-public:
-};

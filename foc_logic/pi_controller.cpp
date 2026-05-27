@@ -1,17 +1,30 @@
+#include <constants.hpp>
 class PIController
 {
 private:
-	/* data */
+	float Kp_ = PIController_Kp;
+	float Ki_ = PIController_Ki;
+	float integral_ = PIController_integral;
+	float integral_max_ = PIController_integral_max;
+
 public:
-	PIController(/* args */);
+	void setGains(float kp, float ki)
+	{
+		Kp_ = kp;
+		Ki_ = ki;
+	}
+	void reset() { integral_ = 0.0f; }
 
-	~PIController();
+	float update(float error, float dt)
+	{
+		integral_ += error * Ki_ * dt;
+
+		// Anti-windup clamp
+		if (integral_ > integral_max_)
+			integral_ = integral_max_;
+		if (integral_ < -integral_max_)
+			integral_ = -integral_max_;
+
+		return Kp_ * error + integral_;
+	}
 };
-
-PIController::PIController(/* args */)
-{
-}
-
-PIController::~PIController()
-{
-}

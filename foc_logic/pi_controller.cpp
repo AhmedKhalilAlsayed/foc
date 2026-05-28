@@ -1,3 +1,5 @@
+#ifndef PI
+#define PI
 #include <constants.hpp>
 class PIController
 {
@@ -28,3 +30,5 @@ public:
 		return Kp_ * error + integral_;
 	}
 };
+
+#endif

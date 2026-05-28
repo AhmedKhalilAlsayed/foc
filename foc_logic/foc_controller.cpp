@@ -1,6 +1,8 @@
+#ifndef FOC_CONTROLLER
+#define FOC_CONTROLLER
+
 #include "constants.hpp"
 #include <cmath>
-#include "BLDC_motor.cpp"
 #include "pi_controller.cpp"
 
 class FOCController
@@ -171,3 +173,5 @@ float clamp(float value, float min_val, float max_val)
 		return max_val;
 	return value;
 }
+
+#endif

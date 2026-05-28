@@ -1,3 +1,6 @@
+#ifndef LOW_PASS_FILTER
+#define LOW_PASS_FILTER
+
 class LowPassFilter
 {
 private:
@@ -14,3 +17,4 @@ LowPassFilter::LowPassFilter(/* args */)
 LowPassFilter::~LowPassFilter()
 {
 }
+#endif

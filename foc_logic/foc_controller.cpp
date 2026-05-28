@@ -64,6 +64,16 @@ public:
 
 FOCController::FOCController(/* args */)
 {
+	// TODO
+
+	//   // Initialize PI gains (to be tuned)
+	//     pi_q.setGains(0.5f, 20.0f);
+	//     pi_d.setGains(0.5f, 20.0f);
+
+	//     // Setup low-pass filters (cutoff 1000 Hz)
+	//     lpf_a.setCutoff(1000.0f, dt);
+	//     lpf_b.setCutoff(1000.0f, dt);
+	//     lpf_c.setCutoff(1000.0f, dt);
 }
 
 FOCController::~FOCController()
@@ -74,6 +84,8 @@ void FOCController::setDt(float dt)
 {
 	// time step, delta time
 	dt_ = dt;
+
+	// TODO: use low pass filter
 }
 void FOCController::setCutOffFrq(float hz)
 {
@@ -86,6 +98,8 @@ void FOCController::updateCurrents(float i_a, float i_b, float i_c)
 	i_a_ = i_a;
 	i_b_ = i_b;
 	i_c_ = i_c;
+
+	// TODO: use low pass filter
 }
 
 void FOCController::updateAngle(float angle_rad)

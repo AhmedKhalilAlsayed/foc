@@ -10,10 +10,6 @@ private:
 	float i_q_ref_ = 0;
 	float i_d_ref_ = 0; // should be 0, max torque
 
-	// measured torque currents
-	// float i_q_measure_ = 0;
-	// float i_d_measure_ = 0;
-
 	// measured phase currents
 	float i_a_ = 0;
 	float i_b_ = 0;
@@ -102,14 +98,6 @@ void FOCController::setDesiredTorque(float i_q, float i_d = 0)
 
 void FOCController::run()
 {
-	/*PI controller*/
-	/*IPark, IClarke*/
-	/*PWMs*/
-	/*Clarke, Park*/
-	/*low pass-filter*/
-	/**/
-	/**/
-	/**/
 
 	// step 1: clarke transform
 	// need the measurd phase currents
@@ -137,6 +125,9 @@ void FOCController::run()
 	float v_q = pi_q_.update(error_q, dt_);
 	float v_d = pi_d_.update(error_d, dt_);
 
+	// should make sure the volts in its safe range
+	// TODO: need to read about it
+
 	// step 4: Inverse Park
 	float v_alpha = v_d * cos_theta - v_q * sin_theta;
 	float v_beta = v_d * sin_theta + v_q * cos_theta;
@@ -145,4 +136,38 @@ void FOCController::run()
 	v_a_ = v_alpha;
 	v_b_ = -0.5f * v_alpha + 0.8660254f * v_beta;
 	v_c_ = -0.5f * v_alpha - 0.8660254f * v_beta;
+
+	// should make sure the volts in its safe range
+	// TODO: need to read about it
+
+	// Apply PWM (convert voltage to duty cycle)
+	// bipolar PWM, -dc to +dc
+
+	float duty_a = (v_a_ / dc_bus_voltage + 1.0f) / 2.0f;
+	float duty_b = (v_b_ / dc_bus_voltage + 1.0f) / 2.0f;
+	float duty_c = (v_c_ / dc_bus_voltage + 1.0f) / 2.0f;
+
+	// should make sure the duty in its safe range
+	// ex: avoids 1.000001 value
+
+	duty_a = clamp(duty_a, 0.0f, 1.0f);
+	duty_b = clamp(duty_b, 0.0f, 1.0f);
+	duty_c = clamp(duty_c, 0.0f, 1.0f);
+
+	/////////// set PWM or log for simulation
+	/////////// set PWM or log for simulation
+	/////////// set PWM or log for simulation
+}
+
+/***************************************************/
+/*                  priv func impl                 */
+/***************************************************/
+
+float clamp(float value, float min_val, float max_val)
+{
+	if (value < min_val)
+		return min_val;
+	if (value > max_val)
+		return max_val;
+	return value;
 }

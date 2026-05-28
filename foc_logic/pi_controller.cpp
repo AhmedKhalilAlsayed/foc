@@ -1,12 +1,13 @@
 #ifndef PI
 #define PI
-#include <constants.hpp>
+#include "constants.hpp"
+
 class PIController
 {
 private:
 	float Kp_ = PIController_Kp;
 	float Ki_ = PIController_Ki;
-	float integral_ = PIController_integral;
+	float integral_ = 0.0f;
 	float integral_max_ = PIController_integral_max;
 
 public:

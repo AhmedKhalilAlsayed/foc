@@ -34,6 +34,9 @@ private:
 	float i_b_ = 0;
 	float i_c_ = 0;
 
+	float i_q_ = 0;
+	float i_d_ = 0;
+
 	// Low-pass filters for current measurements
 	LowPassFilter lpf_a_{}, lpf_b_{}, lpf_c_{};
 
@@ -51,13 +54,10 @@ private:
 	float dt_ = 0;
 
 	// PI
-	PIController pi_q_{};
-	PIController pi_d_{};
+	PIController pi_q_{}, pi_d_{};
 
 	float error_q_ = 0;
 	float error_d_ = 0;
-	float i_q_ = 0;
-	float i_d_ = 0;
 
 	// angle
 	float angle_rad_ = 0;

@@ -5,10 +5,10 @@
 class PIController
 {
 private:
-	float Kp_ = PIController_Kp;
+	float Kp_ = PIController_Kp; 
 	float Ki_ = PIController_Ki;
 	float integral_ = 0.0f;
-	float integral_max_ = PIController_integral_max;
+	float integral_max_ = PIController_integral_max; 
 
 public:
 	void setGains(float kp, float ki)

@@ -12,8 +12,8 @@ const float dc_bus_voltage = 5.0f;
 const float lpf_cutoffHz = 1000.0f;
 
 // PI controller
-const float PIController_Kp = 0.01f;
-const float PIController_Ki = 0.1f;
+const float PIController_Kp = 1.0f;
+const float PIController_Ki = 10.0f;
 const float PIController_integral_max = 1.0f;
 
 #endif

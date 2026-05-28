@@ -72,7 +72,7 @@ void MotorModel::step(float v_a, float v_b, float v_c)
 	float i_beta = (i_b - i_c) / 1.7320508f;
 	float cos_theta = std::cos(theta);
 	float sin_theta = std::sin(theta);
-	float i_q = i_alpha * sin_theta + i_beta * cos_theta;
+	float i_q = -i_alpha * sin_theta + i_beta * cos_theta;
 	float Te = Ke * i_q; // Nm
 
 	// 5. Mechanical equation: J * dω/dt = Te - B*ω - T_load

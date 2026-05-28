@@ -15,9 +15,10 @@ float clamp(float value, float min_val, float max_val)
 {
 	if (value < min_val)
 		return min_val;
-	if (value > max_val)
+	else if (value > max_val)
 		return max_val;
-	return value;
+	else
+		return value;
 }
 
 //////////////////////////////////////////////////////
@@ -36,6 +37,9 @@ private:
 
 	float i_q_ = 0;
 	float i_d_ = 0;
+
+	float v_q_ = 0;
+	float v_d_ = 0;
 
 	// Low-pass filters for current measurements
 	LowPassFilter lpf_a_{}, lpf_b_{}, lpf_c_{};
@@ -62,8 +66,9 @@ private:
 	// angle
 	float angle_rad_ = 0;
 
-	// BLDC motor
-	// BLDCMotor motor;
+	// After inverse Clarke, before duty calculation
+	// clamp your volts
+	float v_max_ = dc_bus_voltage / 1.732f; // SVPWM limit
 
 public:
 	FOCController(/* args */);
@@ -99,6 +104,7 @@ public:
 	float getIqRef() const { return i_q_ref_; }
 	float getIq() const { return i_q_; }
 	float getErrorIq() const { return error_q_; }
+	float getVq() const { return v_q_; }
 
 	~FOCController();
 };
@@ -180,15 +186,26 @@ void FOCController::run()
 	error_q_ = i_q_ref_ - i_q_;
 	error_d_ = i_d_ref_ - i_d_;
 
-	float v_q = pi_q_.update(error_q_, dt_);
-	float v_d = pi_d_.update(error_d_, dt_);
+	v_q_ = pi_q_.update(error_q_, dt_);
+	// v_q_ = 0.5f;
+	v_d_ = pi_d_.update(error_d_, dt_);
+	// v_d_ = 0;
 
 	// should make sure the volts in its safe range
 	// TODO: need to read about it
+	// vector clamping, mag and theta
+
+	float v_mag = sqrtf(v_q_ * v_q_ + v_d_ * v_d_);
+	if (v_mag > v_max_)
+	{
+		float scale = v_max_ / v_mag;
+		v_q_ *= scale;
+		v_d_ *= scale;
+	}
 
 	// step 4: Inverse Park
-	float v_alpha = v_d * cos_theta - v_q * sin_theta;
-	float v_beta = v_d * sin_theta + v_q * cos_theta;
+	float v_alpha = v_d_ * cos_theta - v_q_ * sin_theta;
+	float v_beta = v_d_ * sin_theta + v_q_ * cos_theta;
 
 	// step 5: inverse Clarke
 	v_a_ = v_alpha;
@@ -198,20 +215,9 @@ void FOCController::run()
 	// should make sure the volts in its safe range
 	// TODO: need to read about it
 
-	// After inverse Clarke, before duty calculation
-	float v_max = dc_bus_voltage / 1.732f; // SVPWM limit
-
-	// Debug: print only if clamping actually changed the value
-	// float old_v_a = v_a_, old_v_b = v_b_, old_v_c = v_c_;
-
-	v_a_ = clamp(v_a_, -v_max, v_max);
-	v_b_ = clamp(v_b_, -v_max, v_max);
-	v_c_ = clamp(v_c_, -v_max, v_max);
-
-	// if (std::abs(old_v_a) > v_max + 0.01f)
-	// {
-	// 	printf("Clamped V: %.2f -> %.2f\n", old_v_a, v_a_);
-	// }
+	// v_a_ = clamp(v_a_, -v_max_, v_max_);
+	// v_b_ = clamp(v_b_, -v_max_, v_max_);
+	// v_c_ = clamp(v_c_, -v_max_, v_max_);
 
 	// Apply PWM (convert voltage to duty cycle)
 	// bipolar PWM, -dc to +dc

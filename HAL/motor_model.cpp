@@ -54,13 +54,18 @@ void MotorModel::step(float v_a, float v_b, float v_c)
 	float emf_b = Ke * omega * std::sin(theta - 2.0f * M_PI / 3.0f);
 	float emf_c = Ke * omega * std::sin(theta - 4.0f * M_PI / 3.0f);
 
-	// 2. Voltage equation: v = R*i + L*di/dt + emf
-	//    => di/dt = (v - R*i - emf) / L
-	float di_a_dt = (v_a - R * i_a - emf_a) / L;
-	float di_b_dt = (v_b - R * i_b - emf_b) / L;
-	float di_c_dt = (v_c - R * i_c - emf_c) / L;
+	// 2. Account for floating neutral point (Vn)
+	// In a Y-connected motor, Vn = (Va + Vb + Vc - (emfa + emfb + emfc)) / 3
+	// Since emfa+emfb+emfc = 0 in a balanced motor:
+	float v_neutral = (v_a + v_b + v_c) / 3.0f;
 
-	// 3. Euler integration (simple, sufficient for simulation)
+	// 3. Voltage equation: v_phase - v_neutral = R*i + L*di/dt + emf
+	//    => di/dt = (v_terminal - v_neutral - R*i - emf) / L
+	float di_a_dt = (v_a - v_neutral - R * i_a - emf_a) / L;
+	float di_b_dt = (v_b - v_neutral - R * i_b - emf_b) / L;
+	float di_c_dt = (v_c - v_neutral - R * i_c - emf_c) / L;
+
+	// 4. Euler integration
 	i_a += di_a_dt * dt;
 	i_b += di_b_dt * dt;
 	i_c += di_c_dt * dt;

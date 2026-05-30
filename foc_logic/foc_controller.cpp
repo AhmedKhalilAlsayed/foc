@@ -1,9 +1,11 @@
 #ifndef FOC_CONTROLLER
 #define FOC_CONTROLLER
 
-#include "constants.hpp"
+#include "iostream"
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
+#include "constants.hpp"
 #include "pi_controller.cpp"
 #include "low_pass_filter.cpp"
 
@@ -68,7 +70,7 @@ private:
 
 	// After inverse Clarke, before duty calculation
 	// clamp your volts
-	float v_max_ = dc_bus_voltage / 1.732f; // SVPWM limit
+	float v_max_ = dc_bus_voltage / 1.7320508f; // SVPWM limit (Vdc / sqrt(3))
 
 public:
 	FOCController(/* args */);
@@ -193,6 +195,7 @@ void FOCController::run()
 
 	// should make sure the volts in its safe range
 	// TODO: need to read about it
+
 	// vector clamping, mag and theta
 
 	float v_mag = sqrtf(v_q_ * v_q_ + v_d_ * v_d_);
@@ -212,19 +215,22 @@ void FOCController::run()
 	v_b_ = -0.5f * v_alpha + 0.8660254f * v_beta;
 	v_c_ = -0.5f * v_alpha - 0.8660254f * v_beta;
 
-	// should make sure the volts in its safe range
-	// TODO: need to read about it
+	// TODO: SPWM vs SVPWM
 
-	// v_a_ = clamp(v_a_, -v_max_, v_max_);
-	// v_b_ = clamp(v_b_, -v_max_, v_max_);
-	// v_c_ = clamp(v_c_, -v_max_, v_max_);
+	// --- SVPWM (Min-Max Injection) ---
+	// This shifts the neutral point to allow 15% more voltage utilization
+	float v_min = std::fmin(v_a_, std::fmin(v_b_, v_c_));
+	float v_max = std::fmax(v_a_, std::fmax(v_b_, v_c_));
+	float v_offset = (v_min + v_max) * 0.5f;
+
+	v_a_ -= v_offset;
+	v_b_ -= v_offset;
+	v_c_ -= v_offset;
 
 	// Apply PWM (convert voltage to duty cycle)
-	// bipolar PWM, -dc to +dc
-
-	duty_a_ = (v_a_ / dc_bus_voltage + 1.0f) / 2.0f;
-	duty_b_ = (v_b_ / dc_bus_voltage + 1.0f) / 2.0f;
-	duty_c_ = (v_c_ / dc_bus_voltage + 1.0f) / 2.0f;
+	duty_a_ = v_a_ / dc_bus_voltage + 0.5f;
+	duty_b_ = v_b_ / dc_bus_voltage + 0.5f;
+	duty_c_ = v_c_ / dc_bus_voltage + 0.5f;
 
 	// should make sure the duty in its safe range
 	// ex: avoids 1.000001 value
@@ -233,9 +239,6 @@ void FOCController::run()
 	duty_b_ = clamp(duty_b_, 0.0f, 1.0f);
 	duty_c_ = clamp(duty_c_, 0.0f, 1.0f);
 
-	/////////// set PWM or log for simulation
-	/////////// set PWM or log for simulation
-	/////////// set PWM or log for simulation
 }
 
 #endif

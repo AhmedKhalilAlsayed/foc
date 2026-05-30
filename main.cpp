@@ -25,10 +25,10 @@ int main()
 	*/
 
 	// Simulation parameters
-	const float DT = 0.00005f;		 // 50 us (20 kHz)
-	const float SIM_TIME = 20.0f;	 // seconds
-	const int STEPS = SIM_TIME / DT; // how many deltas
-	const int LOG_EVERY = 1000;		 // log every 1000 steps (50 ms)
+	const float DT = 0.00005f;				// 50 us (20 kHz)
+	const float SIMULATION_TIME = 3.0f;		// seconds
+	const int STEPS = SIMULATION_TIME / DT; // how many deltas
+	const int LOG_EVERY = 1000;				// log every 1000 steps (50 ms)
 
 	// Create controller and motor
 	FOCController foc{};
@@ -43,8 +43,8 @@ int main()
 
 	// Open CSV file for logging
 	std::ofstream log("foc_simulation.csv");
-	// log << "time_ms,theta_rad,omega_radps,i_a,i_b,i_c,i_q_ref,error_q,v_q\n";
-	log << "time_ms,v_q\n";
+	log << "time_ms,theta_rad,omega_radps,i_a,i_b,i_c,i_q_ref,error_q,v_q\n";
+	// log << "time_ms,i_q_ref,v_q\n";
 
 	// Main simulation loop
 	for (int step = 0; step < STEPS; ++step)
@@ -69,7 +69,7 @@ int main()
 		{
 			torque_cmd = 0.0f; // coast again
 		}
-		foc.setDesiredTorque(0);
+		foc.setDesiredTorque(torque_cmd);
 
 		// ----- Update FOC with measured feedback (from motor model) -----
 		float angle = motor.getAngle();
@@ -89,13 +89,13 @@ int main()
 		if (step % LOG_EVERY == 0)
 		{
 			log << time_sec * 1000.0 << ","
-				// << angle << ","
-				// << motor.getSpeed() << ","
-				// << i_a << ","
-				// << i_b << ","
-				// << i_c << ","
-				// << foc.getIqRef() << ","
-				// << foc.getErrorIq() << ","
+				<< angle << ","
+				<< motor.getSpeed() << ","
+				<< i_a << ","
+				<< i_b << ","
+				<< i_c << ","
+				<< foc.getIqRef() << ","
+				<< foc.getErrorIq() << ","
 				<< foc.getVq()
 				<< "\n";
 		}

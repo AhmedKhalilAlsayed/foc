@@ -13,16 +13,6 @@
 /*                  priv func impl                 */
 /***************************************************/
 
-float clamp(float value, float min_val, float max_val)
-{
-	if (value < min_val)
-		return min_val;
-	else if (value > max_val)
-		return max_val;
-	else
-		return value;
-}
-
 //////////////////////////////////////////////////////
 
 class FOCController
@@ -40,16 +30,20 @@ private:
 	float i_q_ = 0;
 	float i_d_ = 0;
 
+	// ADC Offsets (Calibrated at startup)
+	float offset_ia_ = 0, offset_ib_ = 0, offset_ic_ = 0;
+	bool calibrated_ = false;
+
 	float v_q_ = 0;
 	float v_d_ = 0;
+	float v_max_ = dc_bus_voltage * math_ONE_BY_SQRT3; // SVPWM limit (Vdc / sqrt(3))
 
 	// Low-pass filters for current measurements
 	LowPassFilter lpf_a_{}, lpf_b_{}, lpf_c_{};
 
-	// volts, get them from inverse transfoms then will be PWMs
-	float v_a_ = 0;
-	float v_b_ = 0;
-	float v_c_ = 0;
+	float v_a_ = 0.0f;
+	float v_b_ = 0.0f;
+	float v_c_ = 0.0f;
 
 	// duties
 	float duty_a_ = 0;
@@ -68,15 +62,10 @@ private:
 	// angle
 	float angle_rad_ = 0;
 
-	// After inverse Clarke, before duty calculation
-	// clamp your volts
-	float v_max_ = dc_bus_voltage / 1.7320508f; // SVPWM limit (Vdc / sqrt(3))
-
 public:
 	FOCController(/* args */);
 
-	// void setCutOffFrq(float hz);
-
+	// delta time
 	void setDt(float dt);
 
 	// run FOC algorithm
@@ -92,6 +81,8 @@ public:
 	// set measured currents, read actual phase currents (from the inverter circuit)
 	// need to a feedback system, clarke, park transfoms
 	void updateCurrents(float i_a, float i_b, float i_c);
+
+	void calibrateCurrents(float i_a, float i_b, float i_c);
 
 	// getters
 
@@ -141,15 +132,23 @@ void FOCController::setDt(float dt)
 	lpf_c_.setCutoff(lpf_cutoffHz, dt);
 }
 
+void FOCController::calibrateCurrents(float i_a, float i_b, float i_c)
+{
+	// Simple moving average or just assign for offset nulling
+	// Important when using ADC reading, because of noise
+	offset_ia_ = i_a;
+	offset_ib_ = i_b;
+	offset_ic_ = i_c;
+	calibrated_ = true;
+}
+
 void FOCController::updateCurrents(float i_a, float i_b, float i_c)
 {
-	// i_a_ = i_a;
-	// i_b_ = i_b;
-	// i_c_ = i_c;
-
-	i_a_ = lpf_a_.filter(i_a);
-	i_b_ = lpf_b_.filter(i_b);
-	i_c_ = lpf_c_.filter(i_c);
+	// Subtract offsets before filtering
+	// Important when using ADC reading, because of noise
+	i_a_ = lpf_a_.filter(i_a - offset_ia_);
+	i_b_ = lpf_b_.filter(i_b - offset_ib_);
+	i_c_ = lpf_c_.filter(i_c - offset_ic_);
 }
 
 void FOCController::updateAngle(float angle_rad)
@@ -159,7 +158,6 @@ void FOCController::updateAngle(float angle_rad)
 void FOCController::setDesiredTorque(float i_q)
 {
 	i_q_ref_ = i_q;
-	// i_d_ref_ = i_d;
 }
 
 void FOCController::run()
@@ -169,18 +167,17 @@ void FOCController::run()
 	// need the measurd phase currents
 
 	float i_alpha = i_a_;
-	float i_beta = (i_b_ - i_c_) / 1.7320508f; // 1/√3
+	float i_beta = (i_b_ - i_c_) * math_ONE_BY_SQRT3;
 
 	// step 2: Park transform
-	// need the motor angle
 
+	// need Hardware Optimization: compute sin/cos once
+	// On real hardware, use sinf/cosf or a LUT
 	float cos_theta = std::cos(angle_rad_);
 	float sin_theta = std::sin(angle_rad_);
 
 	i_q_ = -i_alpha * sin_theta + i_beta * cos_theta;
 	i_d_ = i_alpha * cos_theta + i_beta * sin_theta;
-
-	// TODO: low pass filter
 
 	// step 3: PI
 	// currents -> volts
@@ -189,14 +186,9 @@ void FOCController::run()
 	error_d_ = i_d_ref_ - i_d_;
 
 	v_q_ = pi_q_.update(error_q_, dt_);
-	// v_q_ = 0.5f;
 	v_d_ = pi_d_.update(error_d_, dt_);
-	// v_d_ = 0;
 
-	// should make sure the volts in its safe range
-	// TODO: need to read about it
-
-	// vector clamping, mag and theta
+	// vector clamping, mag and theta, more accurate
 
 	float v_mag = sqrtf(v_q_ * v_q_ + v_d_ * v_d_);
 	if (v_mag > v_max_)
@@ -212,10 +204,10 @@ void FOCController::run()
 
 	// step 5: inverse Clarke
 	v_a_ = v_alpha;
-	v_b_ = -0.5f * v_alpha + 0.8660254f * v_beta;
-	v_c_ = -0.5f * v_alpha - 0.8660254f * v_beta;
+	v_b_ = -0.5f * v_alpha + math_SQRT3_BY_2 * v_beta;
+	v_c_ = -0.5f * v_alpha - math_SQRT3_BY_2 * v_beta;
 
-	// TODO: SPWM vs SVPWM
+	// use SVPWM, better than SPWM
 
 	// --- SVPWM (Min-Max Injection) ---
 	// This shifts the neutral point to allow 15% more voltage utilization
@@ -235,10 +227,9 @@ void FOCController::run()
 	// should make sure the duty in its safe range
 	// ex: avoids 1.000001 value
 
-	duty_a_ = clamp(duty_a_, 0.0f, 1.0f);
-	duty_b_ = clamp(duty_b_, 0.0f, 1.0f);
-	duty_c_ = clamp(duty_c_, 0.0f, 1.0f);
-
+	duty_a_ = std::clamp(duty_a_, 0.0f, 1.0f);
+	duty_b_ = std::clamp(duty_b_, 0.0f, 1.0f);
+	duty_c_ = std::clamp(duty_c_, 0.0f, 1.0f);
 }
 
 #endif

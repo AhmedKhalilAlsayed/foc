@@ -1,8 +1,8 @@
 # 31-5-2026
 
 # FOC ESC 
+- **This is't full project, just I am learning how to impl the FOC to understand it more**
 - This project for control BLDC motor by FOC ESC (Field-Oriented Control Electronic Speed Controller)
-- This is't full project, just I am learning how to impl the FOC to understand it more
 - After that, I can use ready impl Lib (SimpleFOC or motor control SDK from ST) or continue my FOC impl
 -  
 ## What I know before the task
